@@ -42,7 +42,7 @@ class RequestsController extends Controller
                     ->paginate($request->limit ? $request->limit : 10);
                 $req->appends($request->only('filter'));
             } else {
-                $req = Req::orderBy('request_no', 'desc')
+                $req = Req::orderBy('request_no', 'asc')
                     ->join('departments', 'requests.department_id', '=', 'id')
                     ->when($request->keyword, function ($query) use ($request) {
                         $query->where('request_no', 'like', "{$request->keyword}") // search by email
