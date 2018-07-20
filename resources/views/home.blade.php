@@ -26,6 +26,23 @@
                         <div class="panel-body">
                             <div class="row">
                                 <div class="col-lg-12">
+                                    @if(!Auth::check())
+                                        <form action="{{ url()->current() }}">
+                                            <div class="col-lg-2">
+                                                <select name="filter" class="form-control">
+                                                    <option value="All"> All </option>
+                                                    @foreach($department as $dep)
+                                                        <option value="{{$dep->id}}">{{$dep->department_name}}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-lg-1">
+                                                <button type="submit" class="btn btn-primary">
+                                                    <small class="fa fa-sort"></small>
+                                                </button>
+                                            </div>
+                                        </form><br><br><br>
+                                    @endif
                                     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
                                     <script type="text/javascript">
                                         google.charts.load("current", {packages:["corechart"]});

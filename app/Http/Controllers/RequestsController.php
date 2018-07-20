@@ -42,7 +42,7 @@ class RequestsController extends Controller
                     ->paginate($request->limit ? $request->limit : 10);
                 $req->appends($request->only('filter'));
             } else {
-                $req = Req::orderBy('request_no', 'asc')
+                $req = Req::orderBy('request_no', 'desc')
                     ->join('departments', 'requests.department_id', '=', 'id')
                     ->when($request->keyword, function ($query) use ($request) {
                         $query->where('request_no', 'like', "{$request->keyword}") // search by email
@@ -99,13 +99,32 @@ class RequestsController extends Controller
         return view('request.create', compact('department'));
     }
 
-    public function reqChart(){
+    public function reqChart(Request $request){
+        $department = Department::all();
         if (!Auth::check()){
-            $req = Req::selectRaw('count(status) as count,status')->groupBy('status')->get();
-            $requests=array();
-            foreach ($req as $result) {
-                $requests[ucfirst($result->status)]=(int)$result->count;
+            if (request()->has('filter')){
+                if($request->filter == 'All'){
+                    $req = Req::selectRaw('count(status) as count,status')->groupBy('status')->get();
+                    $requests=array();
+                    foreach ($req as $result) {
+                        $requests[ucfirst($result->status)]=(int)$result->count;
+                    }
+                } else {
+                    $req = Req::selectRaw('count(status) as count,status')->where('department_id', $request->filter)
+                        ->groupBy('status')->get();
+                    $requests=array();
+                    foreach ($req as $result) {
+                        $requests[ucfirst($result->status)]=(int)$result->count;
+                    }
+                }
+            } else {
+                $req = Req::selectRaw('count(status) as count,status')->groupBy('status')->get();
+                $requests=array();
+                foreach ($req as $result) {
+                    $requests[ucfirst($result->status)]=(int)$result->count;
+                }
             }
+
         } else if(Auth::user()->role == 'admin'){
             $req = Req::selectRaw('count(status) as count,status')->groupBy('status')->get();
             $requests=array();
@@ -120,8 +139,7 @@ class RequestsController extends Controller
                 $requests[ucfirst($result->status)]=(int)$result->count;
             }
         }
-
-        return view('home',compact('requests'));
+        return view('home',compact('requests', 'department'));
     }
 
     public function getService($id)
@@ -276,13 +294,16 @@ class RequestsController extends Controller
     }
 
     public function export(){
-        $req =  Req::select('request_no','requests.name','subject','description','feedback','status','created_at', 'updated_at', 'departments.department_name', 'services.service_name', 'users.name')
+        $req =  Req::where('requests.department_id', Auth::user()->department_id)
             ->join('departments', 'requests.department_id', '=', 'departments.id')
-            ->join('users', 'requests.user_id', '=', 'users.id')
             ->join('services', 'requests.service_id', '=', 'services.id')
+            //->join('users', 'requests.user_id', '=', 'users.id')
+            //->whereNull('requests.user_id')
+            //->orwhereNotNull('requests.user_id')
+            ->select('request_no','requests.name','requests.subject','requests.description','requests.feedback','requests.status','requests.created_at', 'requests.updated_at', 'departments.department_name', 'services.service_name')
             ->get()->toArray();
         //return Excel::download($req);
-        return Excel::create('datarequest',  function($excel) use($req){
+        return Excel::create('request_'.date('YmdHis'),  function($excel) use($req){
             $excel->sheet('mysheet',  function($sheet) use($req){
                 $sheet->fromArray($req);
             });
