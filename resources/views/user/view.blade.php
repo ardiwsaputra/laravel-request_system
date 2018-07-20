@@ -18,6 +18,20 @@
                         <div class="panel-body">
                             <div class="row">
                                 <div class="col-lg-12">
+                                    <form action="{{ url()->current() }}">
+                                        <div class="col-lg-10">
+                                            <input type="text" name="keyword" class="form-control" placeholder="Email or Name . . .">
+                                        </div>
+                                        <div class="col-lg-2">
+                                            <button type="submit" class="btn btn-primary">
+                                                <small class="fa fa-search"> Search </small>
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div><br><br><br>
+                            </div>
+                            <div class="row">
+                                <div class="col-lg-12">
                                     <?php if(Session::has('alert-success')): ?>
                                     <div class="alert alert-success">
                                         <strong>Success!</strong> <?php echo Session::get('alert-success') ?>.
@@ -79,6 +93,7 @@
                                         {{-- // end loop --}}
                                         </tbody>
                                     </table>
+                                    <center>{!! $user->links() !!}</center>
                                 </div>
                             </div>
                             <!-- /.row (nested) -->

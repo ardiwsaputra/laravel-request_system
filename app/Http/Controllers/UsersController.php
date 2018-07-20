@@ -15,10 +15,19 @@ class UsersController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         if(Auth::user()->role == 'admin') {
-            $user = User::all();
+            $this->validate($request, [
+                'limit' => 'integer',
+            ]);
+            $user = User::when($request->keyword, function ($query) use ($request) {
+                    $query->where('name', 'like', "%{$request->keyword}%")
+                        ->orWhere('email', 'like', "%{$request->keyword}%")// or by name
+                    ;
+                })
+                ->paginate($request->limit ? $request->limit : 10);
+            $user->appends($request->only('keyword'));
         } else {
             $user = User::where('department_id', Auth::user()->department_id)
                 ->where('role', 'agent')
