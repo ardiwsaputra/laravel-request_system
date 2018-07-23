@@ -10,6 +10,7 @@ use App\Service;
 use App\Req;
 use App\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Input;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Auth;
 use Carbon;
@@ -26,7 +27,8 @@ class RequestsController extends Controller
      */
     public function index(Request $request)
     {
-        if (!Auth::check()){
+        $department = Department::all();
+        if (!Auth::check() || Auth::user()->role == 'admin'){
             $this->validate($request, [
                 'limit' => 'integer',
             ]);
@@ -34,58 +36,67 @@ class RequestsController extends Controller
                 $req = Req::orderBy($request->filter, $request->sort)
                     ->join('departments', 'requests.department_id', '=', 'id')
                     ->when($request->keyword, function ($query) use ($request) {
-                        $query->where('request_no', 'like', "{$request->keyword}") // search by email
-                        ->orWhere('name', 'like', "{$request->keyword}%") // or by name
-                        ->orWhere('created_at', 'like', "%{$request->keyword}%")
-                        ->orWhere('department_name', 'like', "{$request->keyword}");
+                        $query->whereBetween('created_at', [$request->date1, $request->date2])
+                        ->where('request_no', 'like', "{$request->keyword}") // search by no
+                        ->where('name', 'like', "{$request->keyword}%");
                     })
                     ->paginate($request->limit ? $request->limit : 10);
-                $req->appends($request->only('filter'));
+                $req->appends($request->only('filter','sort','keyword','department','date1','date2'));
             } else {
-                $req = Req::orderBy('request_no', 'desc')
-                    ->join('departments', 'requests.department_id', '=', 'id')
-                    ->when($request->keyword, function ($query) use ($request) {
-                        $query->where('request_no', 'like', "{$request->keyword}") // search by email
-                        ->orWhere('name', 'like', "{$request->keyword}%") // or by name
-                        ->orWhere('created_at', 'like', "%{$request->keyword}%")
-                        ->orWhere('department_name', 'like', "{$request->keyword}");
-                    })
-                    ->paginate($request->limit ? $request->limit : 10);
-                $req->appends($request->only('keyword'));
+                if ($request->department == 'All') {
+                    $req = Req::orderBy('request_no', 'desc')
+                        ->join('departments', 'requests.department_id', '=', 'id')
+                        ->when($request->keyword, function ($query) use ($request) {
+                            $query->whereBetween('created_at', [$request->date1, $request->date2])
+                                ->where('name', 'like', "{$request->keyword}%")
+                                ->orwhere('request_no', 'like', "{$request->keyword}") // search by no
+                            ;
+                        })
+                        ->paginate($request->limit ? $request->limit : 10);
+                    $req->appends($request->only('keyword','department','date1','date2','filter','sort'));
+                } else {
+                    $req = Req::orderBy('request_no', 'desc')
+                        ->join('departments', 'requests.department_id', '=', 'id')
+                        ->when($request->keyword, function ($query) use ($request) {
+                            $query->whereBetween('created_at', [$request->date1, $request->date2])
+                                ->where('name', 'like', "{$request->keyword}%")
+                                ->orwhere('request_no', 'like', "{$request->keyword}") // search by no
+                                ->where('department_id', 'like', "{$request->department}");
+                        })
+                        ->paginate($request->limit ? $request->limit : 10);
+                    $req->appends($request->only('keyword','department','date1','date2','filter','sort'));
+                }
             }
         } else {
             $this->validate($request, [
                 'limit' => 'integer',
             ]);
-
             if (request()->has('filter')){
                 $req = Req::where('department_id', Auth::user()->department_id)
                     ->join('departments', 'requests.department_id', '=', 'id')
                     ->orderBy($request->filter, $request->sort)
                     ->when($request->keyword, function ($query) use ($request) {
-                        $query->where('request_no', 'like', "{$request->keyword}") // search by email
-                        ->orWhere('name', 'like', "{$request->keyword}%") // or by name
-                        ->orWhere('created_at', 'like', "%{$request->keyword}%")
-                        ->orWhere('department_name', 'like', "{$request->keyword}")
+                        $query->whereBetween('created_at', [$request->date1, $request->date2])
+                        ->where('request_no', 'like', "{$request->keyword}") // search by no
+                        ->Where('name', 'like', "{$request->keyword}%") // or by name
                         ->where('department_id', Auth::user()->department_id);
                     })
                     ->paginate($request->limit ? $request->limit : 10);
-                $req->appends($request->only('filter'));
+                $req->appends($request->only('filter', 'sort'));
             } else {
                 $req = Req::where('department_id', Auth::user()->department_id)
                     ->join('departments', 'requests.department_id', '=', 'id')
                     ->orderBy('request_no', 'desc')
                     ->when($request->keyword, function ($query) use ($request) {
-                        $query  ->where('request_no', 'like', "{$request->keyword}") // search by email
-                        ->orWhere('name', 'like', "{$request->keyword}%") // or by name
-                        ->orWhere('created_at', 'like', "%{$request->keyword}%")
-                        ->orWhere('department_name', 'like', "{$request->keyword}")
+                        $query->whereBetween('created_at', [$request->date1, $request->date2])
+                        ->where('name', 'like', "{$request->keyword}%") // or by name
+                        ->orwhere('request_no', 'like', "{$request->keyword}") // search by email
                         ->where('department_id', Auth::user()->department_id);
                     })->paginate($request->limit ? $request->limit : 10);
-                $req->appends($request->only('keyword'));
+                $req->appends($request->only('keyword','department','date1','date2'));
             }
         }
-        return view('request.view', compact('req'));
+        return view('request.view', compact('req', 'department'));
     }
 
     /**
@@ -101,16 +112,28 @@ class RequestsController extends Controller
 
     public function reqChart(Request $request){
         $department = Department::all();
-        if (!Auth::check()){
+        if (!Auth::check() || Auth::user()->role == 'admin'){
             if (request()->has('filter')){
                 if($request->filter == 'All'){
-                    $req = Req::selectRaw('count(status) as count,status')->groupBy('status')->get();
-                    $requests=array();
-                    foreach ($req as $result) {
-                        $requests[ucfirst($result->status)]=(int)$result->count;
+                    if (request()->has('date1') || request()->has('date2')){
+                        $from = $request->date1;
+                        $to = $request->date2;
+                        $req = Req::whereBetween('created_at', [$from, $to])->selectRaw('count(status) as count,status')->groupBy('status')->get();
+                        $requests=array();
+                        foreach ($req as $result) {
+                            $requests[ucfirst($result->status)]=(int)$result->count;
+                        }
+                    } else {
+                        $req = Req::selectRaw('count(status) as count,status')->groupBy('status')->get();
+                        $requests=array();
+                        foreach ($req as $result) {
+                            $requests[ucfirst($result->status)]=(int)$result->count;
+                        }
                     }
                 } else {
-                    $req = Req::selectRaw('count(status) as count,status')->where('department_id', $request->filter)
+                    $from = $request->date1;
+                    $to = $request->date2;
+                    $req = Req::whereBetween('created_at', [$from, $to])->selectRaw('count(status) as count,status')->where('department_id', $request->filter)
                         ->groupBy('status')->get();
                     $requests=array();
                     foreach ($req as $result) {
@@ -118,6 +141,7 @@ class RequestsController extends Controller
                     }
                 }
             } else {
+
                 $req = Req::selectRaw('count(status) as count,status')->groupBy('status')->get();
                 $requests=array();
                 foreach ($req as $result) {
@@ -125,19 +149,27 @@ class RequestsController extends Controller
                 }
             }
 
-        } else if(Auth::user()->role == 'admin'){
-            $req = Req::selectRaw('count(status) as count,status')->groupBy('status')->get();
-            $requests=array();
-            foreach ($req as $result) {
-                $requests[ucfirst($result->status)]=(int)$result->count;
-            }
         } else {
-            $req = Req::selectRaw('count(status) as count,status')->where('department_id', Auth::user()->department_id)
-                ->groupBy('status')->get();
-            $requests=array();
-            foreach ($req as $result) {
-                $requests[ucfirst($result->status)]=(int)$result->count;
+            if (request()->has('date1')){
+                $from = $request->date1;
+                $to = $request->date2;
+                $req = Req::whereBetween('created_at', [$from, $to])->selectRaw('count(status) as count,status')
+                    ->where('department_id', Auth::user()->department_id)
+                    ->groupBy('status')->get();
+                $requests=array();
+                foreach ($req as $result) {
+                    $requests[ucfirst($result->status)]=(int)$result->count;
+                }
             }
+            else {
+                $req = Req::selectRaw('count(status) as count,status')->where('department_id', Auth::user()->department_id)
+                    ->groupBy('status')->get();
+                $requests=array();
+                foreach ($req as $result) {
+                    $requests[ucfirst($result->status)]=(int)$result->count;
+                }
+            }
+
         }
         return view('home',compact('requests', 'department'));
     }
@@ -294,16 +326,69 @@ class RequestsController extends Controller
     }
 
     public function export(){
-        $req =  Req::where('requests.department_id', Auth::user()->department_id)
-            ->join('departments', 'requests.department_id', '=', 'departments.id')
-            ->join('services', 'requests.service_id', '=', 'services.id')
-            //->join('users', 'requests.user_id', '=', 'users.id')
-            //->whereNull('requests.user_id')
-            //->orwhereNotNull('requests.user_id')
-            ->select('request_no','requests.name','requests.subject','requests.description','requests.feedback','requests.status','requests.created_at', 'requests.updated_at', 'departments.department_name', 'services.service_name')
-            ->get()->toArray();
-        //return Excel::download($req);
-        return Excel::create('request_'.date('YmdHis'),  function($excel) use($req){
+        $date1 = Input::get('date1');
+        $date2 = Input::get('date2');
+        $keyword = Input::get('keyword');
+        $department = Input::get('department');
+        $filter = Input::get('filter');
+        $sort = Input::get('sort');
+        if (Auth::user()->role == 'admin'){
+            if (!$filter == '') {
+                $req =  Req::orderBy($filter, $sort)
+                    ->join('departments', 'requests.department_id', '=', 'departments.id')
+                    ->join('services', 'requests.service_id', '=', 'services.id')
+                    ->select('request_no','requests.name','requests.subject','requests.description','requests.feedback','requests.status','requests.created_at', 'requests.updated_at', 'departments.department_name', 'services.service_name')
+                    ->get()->toArray();
+            } else if ($department == 'All') {
+                $req =  Req::whereBetween('created_at', [$date1, $date2])
+                    ->where('request_no', 'like', "{$keyword}") // search by no
+                    ->where('name', 'like', "{$keyword}%")
+                    ->join('departments', 'requests.department_id', '=', 'departments.id')
+                    ->join('services', 'requests.service_id', '=', 'services.id')
+                    ->select('request_no','requests.name','requests.subject','requests.description','requests.feedback','requests.status','requests.created_at', 'requests.updated_at', 'departments.department_name', 'services.service_name')
+                    ->get()->toArray();
+            } else if (($keyword || $department || $date1 || $date2) != '') {
+                $req =  Req::where('request_no', 'like', "{$keyword}") // search by no
+                    ->orwhere('name', 'like', "{$keyword}%")
+                    ->whereBetween('created_at', [$date1, $date2])
+                    ->where('requests.department_id', 'like', "{$department}")
+                    ->join('departments', 'requests.department_id', '=', 'departments.id')
+                    ->join('services', 'requests.service_id', '=', 'services.id')
+                    ->select('request_no','requests.name','requests.subject','requests.description','requests.feedback','requests.status','requests.created_at', 'requests.updated_at', 'departments.department_name', 'services.service_name')
+                    ->get()->toArray();
+            } else {
+                $req =  Req::join('departments', 'requests.department_id', '=', 'departments.id')
+                    ->join('services', 'requests.service_id', '=', 'services.id')
+                    ->select('request_no','requests.name','requests.subject','requests.description','requests.feedback','requests.status','requests.created_at', 'requests.updated_at', 'departments.department_name', 'services.service_name')
+                    ->get()->toArray();
+            }
+        } else {
+            if (!$filter == '') {
+                $req =  Req::where('requests.department_id', Auth::user()->department_id)
+                    ->orderBy($filter, $sort)
+                    ->join('departments', 'requests.department_id', '=', 'departments.id')
+                    ->join('services', 'requests.service_id', '=', 'services.id')
+                    ->select('request_no','requests.name','requests.subject','requests.description','requests.feedback','requests.status','requests.created_at', 'requests.updated_at', 'departments.department_name', 'services.service_name')
+                    ->get()->toArray();
+            } else if (($keyword || $department || $date1 || $date2) != '') {
+                $req =  Req::where('requests.department_id', Auth::user()->department_id)
+                    ->whereBetween('created_at', [$date1, $date2])
+                    ->where('request_no', 'like', "{$keyword}") // search by no
+                    ->orwhere('name', 'like', "{$keyword}%")
+                    ->join('departments', 'requests.department_id', '=', 'departments.id')
+                    ->join('services', 'requests.service_id', '=', 'services.id')
+                    ->select('request_no','requests.name','requests.subject','requests.description','requests.feedback','requests.status','requests.created_at', 'requests.updated_at', 'departments.department_name', 'services.service_name')
+                    ->get()->toArray();
+            } else {
+                $req =  Req::where('requests.department_id', Auth::user()->department_id)
+                    ->join('departments', 'requests.department_id', '=', 'departments.id')
+                    ->join('services', 'requests.service_id', '=', 'services.id')
+                    ->select('request_no','requests.name','requests.subject','requests.description','requests.feedback','requests.status','requests.created_at', 'requests.updated_at', 'departments.department_name', 'services.service_name')
+                    ->get()->toArray();
+            }
+        }
+
+        return Excel::create('Request_'.date('Y-m-d H:i:s'),  function($excel) use($req){
             $excel->sheet('mysheet',  function($sheet) use($req){
                 $sheet->fromArray($req);
             });

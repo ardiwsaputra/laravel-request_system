@@ -18,23 +18,64 @@
                         <div class="panel-body">
                             <div class="row">
                                 <div class="col-lg-12">
-                                    <form action="{{ url()->current() }}">
-                                        <div class="col-lg-4">
-                                            <input type="text" name="keyword" class="form-control" placeholder="ID, Name, Department or Date">
-                                        </div>
-                                        <div class="col-lg-1">
-                                            <button type="submit" class="btn btn-primary">
-                                                <small class="fa fa-search"></small>
-                                            </button>
-                                        </div>
-                                    </form>
+                                    <?php if(Session::has('alert-success')): ?>
+                                    <div class="alert alert-success">
+                                        <strong>Success!</strong> <?php echo Session::get('alert-success') ?>.
+                                    </div>
+                                    <?php endif; ?>
+                                    @if(!Auth::check() || Auth::user()->role == 'admin')
+                                        <form action="{{ url()->current() }}">
+                                            <div class="col-lg-3">
+                                                <input type="text" name="keyword" class="form-control" placeholder="ID or Name . . .">
+                                            </div>
+                                            <div class="col-lg-2">
+                                                <select name="department" class="form-control">
+                                                    <option value="All"> All </option>
+                                                    @foreach($department as $dep)
+                                                        <option value="{{$dep->id}}">{{$dep->department_name}}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-lg-3">
+                                                <input type="date" class="form-control" name="date1" value="{{ date('Y-m-d') }}">
+                                            </div>
+                                            <div class="col-lg-3">
+                                                <input type="date" class="form-control" name="date2" value="{{ date('Y-m-d') }}">
+                                            </div>
+                                            <div class="col-lg-1">
+                                                <button type="submit" class="btn btn-primary">
+                                                    <small class="fa fa-search"></small>
+                                                </button>
+                                            </div>
+                                        </form>
+                                    @else
+                                        <form action="{{ url()->current() }}">
+                                            <div class="col-lg-4">
+                                                <input type="text" name="keyword" class="form-control" placeholder="ID or Name . . .">
+                                            </div>
+                                            <div class="col-lg-3">
+                                                <input type="date" class="form-control" name="date1" value="{{ date('Y-m-d') }}">
+                                            </div>
+                                            <div class="col-lg-3">
+                                                <input type="date" class="form-control" name="date2" value="{{ date('Y-m-d') }}">
+                                            </div>
+                                            <div class="col-lg-1">
+                                                <button type="submit" class="btn btn-primary">
+                                                    <small class="fa fa-search"></small>
+                                                </button>
+                                            </div>
+                                        </form>
+                                    @endif
+                                </div>
+                            </div><br>
+                            <div class="row">
+                                <div class="col-lg-12">
                                     <form action="{{ url()->current() }}">
                                         <div class="col-lg-2">
                                             <select name="filter" class="form-control">
                                                 <option value="request_no"> ID </option>
-                                                <option value="department_id"> Department </option>
-                                                <option value="created_at"> Date </option>
-                                                <option value="status">Status</option>
+                                                <option value="created_at"> DATE </option>
+                                                <option value="status"> STATUS </option>
                                             </select>
                                         </div>
                                         <div class="col-lg-2">
@@ -51,7 +92,7 @@
                                     </form>
                                     @if(Auth::check())
                                         <div class="col-lg-2">
-                                            <a href="{{route('request.export')}}" target="_blank" class="btn btn-success">Export</a>
+                                            <a href="{{ "request/export?".substr(url()->full(), 30) }}" target="_blank" class="btn btn-success">Export</a>
                                         </div>
                                     @endif
                                 </div>
@@ -59,27 +100,20 @@
                             <br>
                             <div class="row">
                                 <div class="col-md-12">
-                                    <?php if(Session::has('alert-success')): ?>
-                                    <div class="alert alert-success">
-                                        <strong>Success!</strong> <?php echo Session::get('alert-success') ?>.
-                                    </div>
-                                    <?php endif; ?>
                                     <table id="example23" width="100%" class="table table-striped table-bordered table-hover">
                                         <thead align="center">
                                         <tr>
                                             <th width="3%"><center>#</center></th>
                                             <th width="3%"><center> ID </th>
                                             <th><center> Name </center></th>
-                                        <!---<th><center> Email </center></th> --->
                                             <th><center> Subject </center></th>
                                             <th><center> Department </center></th>
                                             <th width="10%"><center> Created </center></th>
                                             <th width="10%"><center> Updated </center></th>
-                                            <!---<th width="30%"><center> Description </center></th>--->
                                             <th width="5%"><center> File </center></th>
                                             <th width="5%"><center> Status </center></th>
                                             @if(Auth::check())
-                                                @if(Auth::user()->status == 'agent')
+                                                @if(Auth::user()->role == 'agent')
                                                     <th width="10%"><center> Agent </center></th>
                                                     <th width="5%"><center> Action </center></th>
                                                 @else
@@ -99,12 +133,10 @@
                                                     <td><center><b>{{ $no++ }}</b></center></td>
                                                     <td><center>{{ $request->request_no }}</center></td>
                                                     <td>{{ $request->name }}</td>
-                                               <!---<td>{{ $request->email }}</td>--->
                                                     <td>{{ $request->subject }}</td>
                                                     <td>{{ $request->department->department_name }}</td>
                                                     <td width="10%"><center>{{ $request->created_at }}</center></td>
-                                                    <td width="10%">{{ $request->updated_at }}</td>
-                                                <!---<td width="30%">{{ $request->description }}</td>--->
+                                                    <td width="10%"><center>{{ $request->updated_at }}</center></td>
                                                     <td>
                                                         <center>
                                                             @if($request->file == '')
@@ -134,7 +166,7 @@
                                                         </center>
                                                     </td>
                                                     @if(Auth::check())
-                                                        @if(Auth::user()->status == 'agent')
+                                                        @if(Auth::user()->role == 'agent')
                                                             <td>
                                                                 @if($request->user_id == '')
                                                                     -

@@ -26,8 +26,17 @@
                         <div class="panel-body">
                             <div class="row">
                                 <div class="col-lg-12">
-                                    @if(!Auth::check())
+                                    @if(!Auth::check() || Auth::user()->role == 'admin')
                                         <form action="{{ url()->current() }}">
+                                            <div class="col-lg-2">
+                                                <h6 align="center"> Search By Entry Date </h6>
+                                            </div>
+                                            <div class="col-lg-3">
+                                                <input type="date" class="form-control" name="date1" value="{{ date('Y-m-d') }}">
+                                            </div>
+                                            <div class="col-lg-3">
+                                                <input type="date" class="form-control" name="date2" value="{{ date('Y-m-d') }}">
+                                            </div>
                                             <div class="col-lg-2">
                                                 <select name="filter" class="form-control">
                                                     <option value="All"> All </option>
@@ -38,7 +47,24 @@
                                             </div>
                                             <div class="col-lg-1">
                                                 <button type="submit" class="btn btn-primary">
-                                                    <small class="fa fa-sort"></small>
+                                                    <small class="fa fa-search"></small>
+                                                </button>
+                                            </div>
+                                        </form><br><br><br>
+                                    @else
+                                        <form action="{{ url()->current() }}">
+                                            <div class="col-lg-2">
+                                                <h6 align="center"> Search By Entry Date </h6>
+                                            </div>
+                                            <div class="col-lg-3">
+                                                <input type="date" class="form-control" name="date1" value="{{ date('Y-m-d') }}">
+                                            </div>
+                                            <div class="col-lg-3">
+                                                <input type="date" class="form-control" name="date2" value="{{ date('Y-m-d') }}">
+                                            </div>
+                                            <div class="col-lg-1">
+                                                <button type="submit" class="btn btn-primary">
+                                                    <small class="fa fa-search"></small>
                                                 </button>
                                             </div>
                                         </form><br><br><br>

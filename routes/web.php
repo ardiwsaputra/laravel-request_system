@@ -66,7 +66,7 @@ Route::group(['middleware' => ['web', 'auth', 'operator']],function(){
 Route::group(['middleware' => ['web', 'auth', 'agent']],function(){
     //Route::resource('request','RequestsController');
     Route::group(['prefix' => 'request'], function(){
-        Route::get('/export/', 'RequestsController@export')->name('request.export');
+        Route::any('/export', 'RequestsController@export')->name('request.export');
         Route::get('/show/{id}', 'RequestsController@show')->name('request.show');
         Route::post('/update/{id}', 'RequestsController@update')->name('request.update');
         Route::post('/destroy/{id}', 'RequestsController@destroy')->name('request.destroy');

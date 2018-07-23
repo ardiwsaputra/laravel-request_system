@@ -15,7 +15,7 @@ class agentMiddleware
      */
     public function handle($request, Closure $next)
     {
-        if (auth()->check() && $request->user()->role == 'agent') {
+        if (auth()->check() && $request->user()->role == 'agent' || $request->user()->role == 'operator' || $request->user()->role == 'admin') {
             return $next($request);
         } else {
             return response(view('error.403'), 403);
