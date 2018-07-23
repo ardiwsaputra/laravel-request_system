@@ -92,7 +92,16 @@
                                     </form>
                                     @if(Auth::check())
                                         <div class="col-lg-2">
-                                            <a href="{{ "request/export?".substr(url()->full(), 30) }}" target="_blank" class="btn btn-success">Export</a>
+                                            <?php
+                                                $qs = url()->full();
+                                                if (strpos($qs,'?')){
+                                                    $qs = explode('?', $qs);
+                                                    $qs = $qs[1];
+                                                } else {
+                                                    $qs = '';
+                                                }
+                                            ?>
+                                            <a href="{{ "request/export?".$qs }}" target="_blank" class="btn btn-success">Export</a>
                                         </div>
                                     @endif
                                 </div>
