@@ -117,6 +117,14 @@
                             </li>
                         </ul>
                     </li>
+                    <li>
+                        <a href="#"><i class="fa fa-inbox fa-fw"></i> Request <span class="fa arrow"></span></a>
+                        <ul class="nav nav-second-level">
+                            <li>
+                                <a href="{{action('RequestsController@index')}}"><i class="fa fa-list-alt fa-fw"></i> All Request </a>
+                            </li>
+                        </ul>
+                    </li>
                     @elseif(Auth::user()->role == 'operator')
                     <li>
                         <a href="#"><i class="fa fa-briefcase fa-fw"></i> Service <span class="fa arrow"></span></a>
